@@ -1,0 +1,375 @@
+## Environment variable configuration
+#
+# LANG
+#
+export LANG=ja_JP.UTF-8
+
+case ${UID} in
+0)
+    LANG=C
+    ;;
+esac
+
+# 基本的なPATHの設定
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr
+export MANPATH=/usr/local/share/man:/usr/local/man:/usr/share/man
+
+# gemdoc=`gem environment gemdir`/doc
+
+## Default shell configuration
+#
+# set prompt
+#
+autoload colors
+colors
+
+# プロンプト
+autoload -Uz vcs_info
+zstyle ':vcs_info:*' enable git svn
+zstyle ':vcs_info:*' max-exports 6 # formatに入る変数の最大数
+zstyle ':vcs_info:git:*' check-for-changes true
+zstyle ':vcs_info:git:*' formats '%b@%r' '%c' '%u'
+zstyle ':vcs_info:git:*' actionformats '%b@%r|%a' '%c' '%u'
+setopt prompt_subst
+function vcs_echo {
+    local st branch color
+    STY= LANG=en_US.UTF-8 vcs_info
+    st=`git status 2> /dev/null`
+    if [[ -z "$st" ]]; then return; fi
+    branch="$vcs_info_msg_0_"
+    if   [[ -n "$vcs_info_msg_1_" ]]; then color=${fg[green]} #staged
+    elif [[ -n "$vcs_info_msg_2_" ]]; then color=${fg[red]} #unstaged
+    elif [[ -n `echo "$st" | grep "^Untracked"` ]]; then color=${fg[blue]} # untracked
+    else color=${fg[cyan]}
+    fi
+    echo "%{$color%}(%{$branch%})%{$reset_color%}" | sed -e s/@/"%F{yellow}@%f%{$color%}"/
+}
+PROMPT='
+%F{yellow}[%~]%f `vcs_echo`
+%(?.$.%F{red}$%f) '
+
+# ディレクトリ名を入力するだけで移動
+setopt auto_cd
+
+# 移動したディレクトリを記録　"cd -[Tab]"で移動履歴を一覧
+setopt auto_pushd
+
+# コマンドが間違っていると訂正するかを確認してくれる
+setopt correct
+
+# 補完候補を詰めて表示する
+setopt list_packed
+
+# パスの最後に付くスラッシュを自動的に削除させないための設定
+setopt noautoremoveslash
+
+# 補完候補表示時などにビープ音を鳴らさないように
+setopt nolistbeep
+
+# 保管候補一覧でファイルの種別をマーク
+setopt list_types
+
+# = 以降でも補完できるようにする
+setopt magic_equal_subst
+
+# 補完時の日本語を正しく表示する
+setopt print_eight_bit
+
+# 重複するコマンドを履歴から削除(以前使ったものを削除)
+setopt hist_ignore_all_dups
+
+# 履歴を追加
+setopt append_history
+
+# 履歴をインクリメンタルに追加
+setopt inc_append_history
+
+# 補完時に文字列末尾へカーソル移動
+setopt always_to_end
+
+# あいまい補完時に候補表示
+setopt auto_list
+
+# historyコマンドをヒストリリストから取り除く
+setopt hist_no_store
+
+# コマンドの空白を削る
+setopt hist_reduce_blanks
+
+# 先頭が空白だった場合はログに記述しない
+setopt hist_ignore_space
+
+# ビープ音を出さない
+setopt no_beep
+
+# ヒストリを呼び出してから編集可能な状態にする
+setopt hist_verify
+
+# 保管候補のカーソル選択を有効にする
+zstyle ':completion:*:default' menu select=1
+
+# 補完の時に大文字小文字を区別しない(但し、大文字を打った場合は小文字に変換しない)
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
+
+## Keybind configuration
+#
+# emacs like keybind (e.x. Ctrl-a gets to line head and Ctrl-e gets
+#   to end) and something additions
+#
+bindkey -e
+bindkey "^[[1~" beginning-of-line # Home gets to line head
+bindkey "^[[4~" end-of-line # End gets to line end
+bindkey "^[[3~" delete-char # Del
+
+# Shift TAB で候補を逆順に移動
+bindkey "\e[Z" reverse-menu-complete
+
+## Command history configuration
+HISTFILE=${HOME}/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt hist_ignore_dups     # ignore duplication command history list
+
+# 複数の端末で履歴を共有
+setopt share_history
+
+
+# Completion configuration
+autoload -U compinit
+compinit
+
+
+# zsh editor
+autoload zed
+
+# terminal configuration
+case "${TERM}" in
+screen)
+    TERM=xterm
+    ;;
+esac
+
+# ターミナルのタイトルに「ユーザ@ホスト:カレントディレクトリ」
+# を表示させる.
+# kterm* と xterm に設定を絞っているのは,タイトルバーの存在し
+# ないプラットフォームで処理しないようにするため.
+case "${TERM}" in
+kterm*|xterm)
+    precmd() {
+        echo -ne "\033]0;${USER}@${HOST%%.*}:${PWD}\007"
+    }
+    ;;
+esac
+
+
+# lsに色付けを行う.
+# 背景が白いターミナル(xterm系)と黒いターミナル(コンソール)で設定を若干変更
+case "${TERM}" in
+xterm|xterm-color)
+    export LSCOLORS=exfxcxdxbxegedabagacad
+    export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
+    zstyle ':completion:*' list-colors 'di=34' 'ln=35' 'so=32' 'ex=31' 'bd=46;34' 'cd=43;34'
+    ;;
+kterm-color)
+    stty erase '^H'
+    export LSCOLORS=exfxcxdxbxegedabagacad
+    export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
+    zstyle ':completion:*' list-colors 'di=34' 'ln=35' 'so=32' 'ex=31' 'bd=46;34' 'cd=43;34'
+    ;;
+kterm)
+    stty erase '^H'
+    ;;
+cons25)
+    unset LANG
+    export LSCOLORS=ExFxCxdxBxegedabagacad
+    export LS_COLORS='di=01;34:ln=01;35:so=01;32:ex=01;31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
+    zstyle ':completion:*' list-colors 'di=;34;1' 'ln=;35;1' 'so=;32;1' 'ex=31;1' 'bd=46;34' 'cd=43;34'
+    ;;
+jfbterm-color)
+    export LSCOLORS=gxFxCxdxBxegedabagacad
+    export LS_COLORS='di=01;36:ln=01;35:so=01;32:ex=01;31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
+    zstyle ':completion:*' list-colors 'di=;36;1' 'ln=;35;1' 'so=;32;1' 'ex=31;1' 'bd=46;34' 'cd=43;34'
+    ;;
+esac
+
+# tab補完に関するtips
+# http://qiita.com/items/13d150c590508d518d26
+autoload -U compinit
+compinit
+zstyle ':completion:*:default' menu select=1
+
+# コマンド内検索(コマンドの途中まで打ってそれにマッチするものを検索)
+# 下の設定ではコマンド履歴の検索機能をC-n, C-pに割り当てて,
+# 複数行の編集には矢印を使用するように設定.
+autoload history-search-end
+zle -N history-beginning-search-backward-end history-search-end
+zle -N history-beginning-search-forward-end history-search-end
+bindkey "^p" history-beginning-search-backward-end
+bindkey "^n" history-beginning-search-forward-end
+bindkey "\\ep" history-beginning-search-backward-end
+bindkey "\\en" history-beginning-search-forward-end
+
+# rbenvの設定
+if [ -d ${HOME}/.rbenv  ] ; then
+    PATH=${HOME}/.rbenv/bin:${PATH}
+    export PATH
+    eval "$(rbenv init -)"
+fi
+
+# rbenv Path
+export PATH=$HOME/.rbenv/bin:$PATH
+export GEM_HOME=$HOME/.rbenv/versions/2.2.0/lib/ruby/gems/2.2.0
+export RUBYLIB=$HOME/.rbenv/versions/2.2.0/lib/ruby/gems/2.2.0
+export PATH=$HOME/.rbenv/shims:$PATH
+export PATH=$HOME/.rbenv/versions/2.2.0:$PATH
+export PATH=$HOME/.rbenv/versions/2.2.0/bin:$PATH
+eval "$(rbenv init -)"
+
+## create emacs env file
+perl -wle \
+    'do { print qq/(setenv "$_" "$ENV{$_}")/ if exists $ENV{$_} } for @ARGV' \
+    PATH > ~/.emacs.d/shellenv.el
+
+export PATH=$HOME/.cask/bin:$PATH
+export PATH=/usr/local/ghc/bin:$PATH
+export PATH=$HOME/.cabal/bin:$PATH
+
+## lessコマンドの色付け
+## 参考サイト
+## http://nippondanji.blogspot.jp/2011/11/less.html
+export LESS='-R'
+export LESSOPEN='| $HOME/bin/src-hilite-lesspipe.sh %s'
+
+## lvの色付けバージョン
+## 参考サイト
+## http://qiita.com/chezou/items/e45b99c7080a3ded0f13
+function lvc() {
+    if [ -f $1 ]; then less $1 | lv -c; fi;
+}
+
+## zshで範囲選択・削除・コピー・切り取りする
+## http://qiita.com/takc923/items/35d9fe81f61436c867a8
+
+# control+hで普段は手前の1文字削除なんだけど範囲選択してたらその範囲を削除
+# control+dで普段は後ろの1文字削除なんだけど範囲選択してたらその範囲を削除
+function delete-region() {
+    zle kill-region
+    CUTBUFFER=$killring[1]
+    shift killring
+}
+zle -N delete-region
+
+function backward-delete-char-or-region() {
+    if [ $REGION_ACTIVE -eq 0 ]; then
+        zle backward-delete-char
+    else
+        zle delete-region
+    fi
+}
+zle -N backward-delete-char-or-region
+
+function delete-char-or-list-or-region() {
+    if [ $REGION_ACTIVE -eq 0 ]; then
+        zle delete-char-or-list
+    else
+        zle delete-region
+    fi
+}
+zle -N delete-char-or-list-or-region
+
+bindkey "^h" backward-delete-char-or-region
+bindkey "^d" delete-char-or-list-or-region
+
+# M-wでコピーした後も範囲選択が続くのを防ぐ.
+function copy-region() {
+    zle copy-region-as-kill
+    REGION_ACTIVE=0
+}
+zle -N copy-region
+bindkey "^[w" copy-region
+
+# 本格的な算術演算を行う
+zmodload -i zsh/mathfunc
+
+# 範囲選択していない状態でC-wを押すと,
+# 単語の切り取りを行うように
+function backward-kill-word-or-region() {
+    if [ $REGION_ACTIVE -eq 0 ]; then
+        zle kill-word
+    else
+        zle kill-region
+    fi
+}
+zle -N backward-kill-word-or-region
+bindkey "^w" backward-kill-word-or-region
+
+# aliasの設定
+# 補完される前にオリジナルのコマンドまで展開して
+# チェックされるように設定.
+setopt complete_aliases
+
+case "${OSTYPE}" in
+freebsd*|darwin*)
+    alias ls="ls -G -w"
+    ;;
+linux*)
+    alias ls="ls --color"
+    ;;
+esac
+
+alias where="command -v"
+alias j="jobs -l"
+
+alias l="ls"
+alias la="ls -a"
+alias lf="ls -F"
+alias ll="ls -l"
+
+alias du="du -h"
+# ディスク容量を確認するコマンドで単位を
+# 適切に変換して表示する
+alias df="df -h"
+
+alias su="su -l"
+
+# 検索対象の文字に色が付く
+alias grep='grep --color'
+
+# 2つ上、3つ上のディレクトリにも移動できるようにする
+alias ...='cd ../..'
+alias ....='cd ../../..'
+
+# 出力をクリップボードに貼り付ける.
+alias pbcopy='xsel --clipboard --input'
+# bundle execの入力を楽に入力.
+alias be="bundle exec"
+# emacsのbyte-compileを楽に入力.
+alias eb="emacs -L . -batch -f batch-byte-compile"
+
+# colordiffの設定
+# colordiffがインストールされていればaliasの設定をcolordiffに
+# 参考サイト
+# http://qiita.com/catatsuy/items/8bafef2a60762a1c9f0f
+if [[ -x `which colordiff` ]]; then
+  alias diff='colordiff -u'
+else
+  alias diff='diff -u'
+fi
+
+# cdとlsを同時に行う
+function cls {
+    cd $1 && ls
+}
+
+# gtkのコマンドが面倒なので
+function gccgtk {
+    gcc -o $1 $2 `pkg-config --cflags --libs gtk+-2.0`
+}
+
+# このコマンドにリダイレクトすると、出力をEmacs
+# で表示する
+function emacsview(){
+    emacsclient -n =(<&0)
+}
+
